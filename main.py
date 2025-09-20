@@ -74,16 +74,35 @@ class BluetoothHeartRateApp:
         self.save_device_history()
     
     def heart_rate_callback(self, heart_rate: int):
-        """心率数据回调函数"""
-        # 实时输出心率数据到控制台
-        from datetime import datetime
+        """心率回调函数"""
         timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"💓 [{timestamp}] 心率: {heart_rate} bpm")
+        
+        # 获取电池电量信息
+        battery_level = None
+        battery_info = ""
+        if self.bluetooth_client and hasattr(self.bluetooth_client, 'last_battery_level') and self.bluetooth_client.last_battery_level is not None:
+            battery_level = self.bluetooth_client.last_battery_level
+            battery_info = f" | 🔋 电量: {battery_level}%"
+        
+        print(f"💓 [{timestamp}] 心率: {heart_rate} bpm{battery_info}")
         
         if self.osc_client and self.osc_client.connected:
-            self.osc_client.send_heart_rate(heart_rate)
+            # 发送心率数据，同时发送电池电量（如果有的话）
+            self.osc_client.send_heart_rate(heart_rate, battery_level)
         else:
             logger.warning(f"OSC未连接，丢失心率数据: {heart_rate} bpm")
+    
+    def battery_callback(self, battery_level: int):
+        """电池电量回调函数"""
+        logger.info(f"设备电池电量: {battery_level}%")
+        
+        # 发送电池电量到OSC
+        if self.osc_client and self.osc_client.connected:
+            # 创建包含电池信息的设备信息字典
+            device_info = {"battery_level": battery_level}
+            self.osc_client.send_device_info(device_info)
+        else:
+            logger.warning(f"OSC未连接，丢失电池数据: {battery_level}%")
     
     async def scan_and_select_device(self) -> Optional[dict]:
         """扫描并选择蓝牙设备"""
@@ -182,14 +201,17 @@ class BluetoothHeartRateApp:
         device_address = device_info["address"]
         device_name = device_info["name"]
         
-        self.bluetooth_client = BluetoothHeartRateClient(self.heart_rate_callback)
+        self.bluetooth_client = BluetoothHeartRateClient(self.heart_rate_callback, self.battery_callback)
         
         for attempt in range(Config.RECONNECT_ATTEMPTS + 1):
             try:
                 logger.info(f"尝试连接蓝牙设备 (第{attempt + 1}次): {device_address}")
                 
                 if await self.bluetooth_client.connect(device_address, device_name):
-                    # 连接成功，保存到历史记录
+                    # 连接成功，等待电池信息读取
+                    await asyncio.sleep(2)  # 等待电池信息读取完成
+                    
+                    # 获取设备信息（包含电池信息）
                     device_info = await self.bluetooth_client.get_device_info()
                     self.add_device_to_history(device_address, device_info.get("name", "未知设备"))
                     

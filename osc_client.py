@@ -49,8 +49,8 @@ class VRChatOSCClient:
         
         logger.info("OSC客户端已断开")
     
-    def send_heart_rate(self, heart_rate: int):
-        """发送心率数据到VRChat"""
+    def send_heart_rate(self, heart_rate: int, battery_level: Optional[int] = None):
+        """发送心率数据到VRChat，同时可选发送电池电量"""
         if not self.connected or not self.client:
             logger.warning("OSC未连接，无法发送心率数据")
             return False
@@ -118,7 +118,17 @@ class VRChatOSCClient:
                 }
             ]
             
-            # 发送所有心率参数
+            # 如果提供了电池电量，添加电池参数
+            if battery_level is not None:
+                heartrates.append({
+                    'address': "/avatar/parameters/BluetoothBattery",
+                    'args': {
+                        'type': "f",
+                        'value': battery_level / 100.0
+                    }
+                })
+            
+            # 发送所有心率参数（和电池参数）
             for element in heartrates:
                 try:
                     address = element['address']
@@ -134,7 +144,12 @@ class VRChatOSCClient:
                     logger.error(f"发送OSC消息失败 {element['address']}: {e}")
             
             self.last_heart_rate = heart_rate
-            logger.debug(f"已发送心率数据到VRChat: {heart_rate} bpm")
+            
+            # 记录发送的数据
+            if battery_level is not None:
+                logger.debug(f"已发送心率和电池数据到VRChat: {heart_rate} bpm, 电量: {battery_level}%")
+            else:
+                logger.debug(f"已发送心率数据到VRChat: {heart_rate} bpm")
             return True
             
         except Exception as e:
@@ -183,12 +198,6 @@ class VRChatOSCClient:
         try:
             self.client.send_message("/avatar/parameters/BluetoothHRConnected", connected)
             
-            # 如果有设备名称，也发送设备信息
-            if device_name and connected:
-                # 将设备名称转换为简单的标识符
-                device_id = hash(device_name) % 1000  # 简单的设备ID
-                self.client.send_message("/avatar/parameters/BluetoothDeviceID", device_id)
-            
             logger.debug(f"已发送蓝牙连接状态: {connected}")
             if device_name:
                 logger.debug(f"设备名称: {device_name}")
@@ -206,10 +215,9 @@ class VRChatOSCClient:
             if "battery_level" in device_info and device_info["battery_level"] is not None:
                 battery_percent = device_info["battery_level"] / 100.0
                 self.client.send_message("/avatar/parameters/BluetoothBattery", battery_percent)
-            
-            # 发送设备服务数量
-            if "services" in device_info:
-                self.client.send_message("/avatar/parameters/BluetoothServices", device_info["services"])
+                logger.info(f"已发送电池电量到VRChat: {device_info['battery_level']}% -> {battery_percent}")
+            else:
+                logger.warning(f"设备信息中没有电池电量数据: {device_info}")
             
             logger.debug("已发送设备信息到VRChat")
             

@@ -14,13 +14,20 @@ class BluetoothHeartRateClient:
     HEART_RATE_SERVICE_UUID = "0000180d-0000-1000-8000-00805f9b34fb"
     HEART_RATE_MEASUREMENT_UUID = "00002a37-0000-1000-8000-00805f9b34fb"
     
-    def __init__(self, heart_rate_callback: Optional[Callable[[int], None]] = None):
+    # 标准蓝牙电池服务UUID
+    BATTERY_SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb"
+    BATTERY_LEVEL_UUID = "00002a19-0000-1000-8000-00805f9b34fb"
+    
+    def __init__(self, heart_rate_callback: Optional[Callable[[int], None]] = None, 
+                 battery_callback: Optional[Callable[[int], None]] = None):
         self.client: Optional[BleakClient] = None
         self.device_address: Optional[str] = None
         self.device_name: Optional[str] = None
         self.heart_rate_callback = heart_rate_callback
+        self.battery_callback = battery_callback
         self.is_connected = False
         self.last_heart_rate = 0
+        self.last_battery_level = None
         
     async def scan_devices(self, timeout: float = 10.0) -> list:
         """扫描附近的蓝牙心率设备"""
@@ -173,10 +180,11 @@ class BluetoothHeartRateClient:
             # 等待一下让连接稳定
             await asyncio.sleep(1)
             
-            # 检查是否有心率服务
+            # 检查是否有心率服务和电池服务
             try:
                 services = self.client.services
                 has_heart_rate_service = False
+                has_battery_service = False
                 
                 service_list = list(services)
                 logger.info(f"设备服务列表 (共{len(service_list)}个服务):")
@@ -185,6 +193,9 @@ class BluetoothHeartRateClient:
                     if service.uuid.lower() == self.HEART_RATE_SERVICE_UUID.lower():
                         has_heart_rate_service = True
                         logger.info("  ✓ 发现心率服务")
+                    elif service.uuid.lower() == self.BATTERY_SERVICE_UUID.lower():
+                        has_battery_service = True
+                        logger.info("  ✓ 发现电池服务")
                 
                 if not has_heart_rate_service:
                     logger.warning("⚠ 该设备不支持标准心率服务")
@@ -199,6 +210,12 @@ class BluetoothHeartRateClient:
                     await self._start_heart_rate_notifications()
                 else:
                     logger.info("跳过心率通知启动，将尝试其他方式获取数据")
+                
+                # 尝试启动电池通知或读取电池电量
+                if has_battery_service:
+                    await self._start_battery_monitoring()
+                else:
+                    logger.info("该设备不支持标准电池服务")
                 
             except Exception as service_error:
                 logger.warning(f"获取服务信息失败: {service_error}")
@@ -286,6 +303,76 @@ class BluetoothHeartRateClient:
         
         return heart_rate
     
+    async def _start_battery_monitoring(self):
+        """启动电池电量监控"""
+        try:
+            # 首先尝试读取当前电池电量
+            await self._read_battery_level()
+            
+            # 尝试启动电池电量通知（如果支持）
+            try:
+                await self.client.start_notify(
+                    self.BATTERY_LEVEL_UUID, 
+                    self._battery_notification_handler
+                )
+                logger.info("已启动电池电量通知")
+            except Exception as notify_error:
+                logger.info(f"电池电量通知不支持，将定期读取: {notify_error}")
+                # 如果不支持通知，启动定期读取
+                asyncio.create_task(self._periodic_battery_read())
+                
+        except Exception as e:
+            logger.warning(f"启动电池监控失败: {e}")
+    
+    async def _read_battery_level(self):
+        """读取电池电量"""
+        try:
+            battery_data = await self.client.read_gatt_char(self.BATTERY_LEVEL_UUID)
+            if battery_data and len(battery_data) > 0:
+                battery_level = battery_data[0]  # 电池电量是0-100的百分比
+                self.last_battery_level = battery_level
+                logger.debug(f"读取到电池电量: {battery_level}%")
+                
+                # 调用电池回调函数
+                if self.battery_callback:
+                    try:
+                        self.battery_callback(battery_level)
+                    except Exception as e:
+                        logger.error(f"电池回调函数执行失败: {e}")
+                        
+                return battery_level
+        except Exception as e:
+            logger.debug(f"读取电池电量失败: {e}")
+            return None
+    
+    def _battery_notification_handler(self, characteristic: BleakGATTCharacteristic, data: bytearray):
+        """处理电池电量通知"""
+        try:
+            if data and len(data) > 0:
+                battery_level = data[0]  # 电池电量是0-100的百分比
+                self.last_battery_level = battery_level
+                logger.debug(f"接收到电池电量通知: {battery_level}%")
+                
+                # 调用电池回调函数
+                if self.battery_callback:
+                    try:
+                        self.battery_callback(battery_level)
+                    except Exception as e:
+                        logger.error(f"电池回调函数执行失败: {e}")
+                        
+        except Exception as e:
+            logger.error(f"处理电池电量通知失败: {e}")
+    
+    async def _periodic_battery_read(self):
+        """定期读取电池电量（当不支持通知时）"""
+        while self.is_connected and self.client and self.client.is_connected:
+            try:
+                await asyncio.sleep(60)  # 每分钟读取一次
+                await self._read_battery_level()
+            except Exception as e:
+                logger.debug(f"定期电池读取失败: {e}")
+                break
+    
     async def get_device_info(self) -> dict:
         """获取设备信息"""
         if not self.client or not self.client.is_connected:
@@ -299,17 +386,13 @@ class BluetoothHeartRateClient:
         }
         
         try:
-            # 尝试读取更多设备信息
-            services = self.client.services
-            service_list = list(services)
-            info["services"] = len(service_list)
-            
-            # 尝试读取电池电量 (如果支持)
-            try:
-                battery_level = await self.client.read_gatt_char("00002a19-0000-1000-8000-00805f9b34fb")
-                info["battery_level"] = battery_level[0] if battery_level else None
-            except:
-                info["battery_level"] = None
+            # 使用缓存的电池电量或尝试读取
+            if self.last_battery_level is not None:
+                info["battery_level"] = self.last_battery_level
+            else:
+                # 尝试读取电池电量
+                battery_level = await self._read_battery_level()
+                info["battery_level"] = battery_level
                 
         except Exception as e:
             logger.warning(f"获取设备详细信息失败: {e}")

@@ -88,9 +88,7 @@ python main.py
 
 ### 连接状态参数
 - `/avatar/parameters/BluetoothHRConnected` (bool) - 蓝牙连接状态
-- `/avatar/parameters/BluetoothDeviceID` (int) - 设备ID
 - `/avatar/parameters/BluetoothBattery` (float) - 设备电池电量 (0.0-1.0)
-- `/avatar/parameters/BluetoothServices` (int) - 设备服务数量
 
 ## 配置选项
 
