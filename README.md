@@ -65,7 +65,34 @@ LOG_TO_FILE=false
 
 ### 3. 运行程序
 
+#### 方法一：使用批处理文件（推荐）
+
+双击运行 `run.bat` 文件，该脚本会：
+- 自动检查Python环境
+- 创建并激活虚拟环境（首次运行时）
+- 自动安装所需依赖包
+- 启动心率转发程序
+
 ```bash
+# 直接双击运行
+run.bat
+```
+
+#### 方法二：手动运行
+
+如果您熟悉Python环境管理，也可以手动运行：
+
+```bash
+# 创建虚拟环境（首次运行）
+python -m venv venv
+
+# 激活虚拟环境
+venv\Scripts\activate
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 运行程序
 python main.py
 ```
 

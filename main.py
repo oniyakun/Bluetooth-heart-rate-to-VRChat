@@ -26,6 +26,7 @@ class BluetoothHeartRateApp:
         self.bluetooth_client = None
         self.osc_client = None
         self.running = False
+        self.show_heart_rate = False  # 控制是否显示心率数据
         self.device_history = self.load_device_history()
         
     def load_device_history(self) -> dict:
@@ -75,19 +76,25 @@ class BluetoothHeartRateApp:
     
     def heart_rate_callback(self, heart_rate: int):
         """心率回调函数"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        # 只在允许显示心率数据时才输出到控制台
+        if self.show_heart_rate:
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            
+            # 获取电池电量信息
+            battery_level = None
+            battery_info = ""
+            if self.bluetooth_client and hasattr(self.bluetooth_client, 'last_battery_level') and self.bluetooth_client.last_battery_level is not None:
+                battery_level = self.bluetooth_client.last_battery_level
+                battery_info = f" | 🔋 电量: {battery_level}%"
+            
+            print(f"💓 [{timestamp}] 心率: {heart_rate} bpm{battery_info}")
         
-        # 获取电池电量信息
-        battery_level = None
-        battery_info = ""
-        if self.bluetooth_client and hasattr(self.bluetooth_client, 'last_battery_level') and self.bluetooth_client.last_battery_level is not None:
-            battery_level = self.bluetooth_client.last_battery_level
-            battery_info = f" | 🔋 电量: {battery_level}%"
-        
-        print(f"💓 [{timestamp}] 心率: {heart_rate} bpm{battery_info}")
-        
+        # 无论是否显示，都要发送OSC数据
         if self.osc_client and self.osc_client.connected:
             # 发送心率数据，同时发送电池电量（如果有的话）
+            battery_level = None
+            if self.bluetooth_client and hasattr(self.bluetooth_client, 'last_battery_level') and self.bluetooth_client.last_battery_level is not None:
+                battery_level = self.bluetooth_client.last_battery_level
             self.osc_client.send_heart_rate(heart_rate, battery_level)
         else:
             logger.warning(f"OSC未连接，丢失心率数据: {heart_rate} bpm")
@@ -294,6 +301,9 @@ class BluetoothHeartRateApp:
             print(f"✅ VRChat OSC已连接: {Config.OSC_IP}:{Config.OSC_PORT}")
             print("\n开始转发心率数据到VRChat...")
             print("按 Ctrl+C 退出程序\n")
+            
+            # 现在开始显示心率数据
+            self.show_heart_rate = True
             
             # 启动保活任务
             keepalive_task = asyncio.create_task(self.bluetooth_client.keep_alive())

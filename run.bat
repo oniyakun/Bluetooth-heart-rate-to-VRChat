@@ -24,11 +24,32 @@ if not exist "main.py" (
     exit /b 1
 )
 
-REM Check dependencies
-echo Checking Python dependencies...
+REM Create virtual environment if it doesn't exist
+if not exist "venv" (
+    echo Creating virtual environment...
+    python -m venv venv
+    if errorlevel 1 (
+        echo Error: Failed to create virtual environment
+        pause
+        exit /b 1
+    )
+    echo Virtual environment created successfully
+)
+
+REM Activate virtual environment
+echo Activating virtual environment...
+call venv\Scripts\activate.bat
+if errorlevel 1 (
+    echo Error: Failed to activate virtual environment
+    pause
+    exit /b 1
+)
+
+REM Check dependencies in virtual environment
+echo Checking Python dependencies in virtual environment...
 python -c "import bleak, pythonosc" >nul 2>&1
 if errorlevel 1 (
-    echo Installing Python dependencies...
+    echo Installing Python dependencies in virtual environment...
     pip install -r requirements.txt
     if errorlevel 1 (
         echo Error: Failed to install dependencies
