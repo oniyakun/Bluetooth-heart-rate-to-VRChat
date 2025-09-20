@@ -90,6 +90,19 @@ python main.py
 - `/avatar/parameters/BluetoothHRConnected` (bool) - 蓝牙连接状态
 - `/avatar/parameters/BluetoothBattery` (float) - 设备电池电量 (0.0-1.0)
 
+## 示例Avatar
+
+[Vard](https://twitter.com/VardFree) 制作了该Avatar，你可以使用他的Avatar来测试：
+
+📦 **下载地址**: [Example_Avatar.unitypackage](https://github.com/vard88508/vrc-osc-miband-hrm/releases)
+
+该Avatar使用了 [RED_SIM 的 Simple counter shader](https://patreon.com/posts/simple-counter-62864361) 来显示数字。
+
+**参数配置：**
+- 使用参数: `Heartrate`
+- 数据类型: 浮点(Float)
+- 数值范围: -1.0 (0bpm) 到 1.0 (255bpm)
+
 ## 配置选项
 
 ### 基本设置
