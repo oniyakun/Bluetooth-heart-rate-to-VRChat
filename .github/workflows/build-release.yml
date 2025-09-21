@@ -45,7 +45,7 @@ jobs:
         powershell Compress-Archive -Path release\* -DestinationPath BluetoothHeartRate-Windows.zip
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: BluetoothHeartRate-Windows
         path: bluetooth-heartrate/BluetoothHeartRate-Windows.zip

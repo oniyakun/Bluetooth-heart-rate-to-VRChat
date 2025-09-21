@@ -1,10 +1,10 @@
 # GitHub Actions 自动构建说明
 
-本项目配置了两个GitHub Actions工作流，用于自动构建和发布程序。
+本项目配置了GitHub Actions工作流，用于自动构建和发布程序。
 
 ## 工作流说明
 
-### 1. 发布构建 (build-release.yml)
+### 发布构建 (build-release.yml)
 
 **触发条件：**
 - 推送标签时（如 `v1.0.0`）
@@ -23,18 +23,6 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-### 2. 开发构建 (build-dev.yml)
-
-**触发条件：**
-- 推送到主分支（main/master/develop）
-- 创建Pull Request
-- 手动触发
-
-**功能：**
-- 语法检查
-- 构建开发版exe文件
-- 上传构建产物（保留7天）
-
 ## 手动触发构建
 
 1. 进入GitHub仓库的 **Actions** 页面
@@ -47,10 +35,6 @@ git push origin v1.0.0
 ### 发布版本
 - 在 **Releases** 页面下载正式发布的版本
 - 包含完整的程序包和说明文档
-
-### 开发版本
-- 在 **Actions** 页面找到对应的构建
-- 点击构建记录，在 **Artifacts** 部分下载
 
 ## 注意事项
 
