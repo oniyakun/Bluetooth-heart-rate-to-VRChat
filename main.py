@@ -29,6 +29,10 @@ class BluetoothHeartRateApp:
         self.show_heart_rate = False  # 控制是否显示心率数据
         self.device_history = self.load_device_history()
         
+        # 超时重连相关
+        self.timeout_reconnect_count = 0
+        self.last_connected_device = None
+        
     def load_device_history(self) -> dict:
         """加载设备历史记录"""
         try:
@@ -110,6 +114,23 @@ class BluetoothHeartRateApp:
             self.osc_client.send_device_info(device_info)
         else:
             logger.warning(f"OSC未连接，丢失电池数据: {battery_level}%")
+    
+    def timeout_callback(self):
+        """数据超时回调函数"""
+        logger.warning("数据接收超时，触发重连机制")
+        
+        # 检查是否启用自动重连
+        if not Config.ENABLE_AUTO_RECONNECT_ON_TIMEOUT:
+            logger.info("自动重连已禁用，不执行重连")
+            return
+        
+        # 检查重连次数限制
+        if self.timeout_reconnect_count >= Config.MAX_TIMEOUT_RECONNECT_ATTEMPTS:
+            logger.error(f"已达到最大重连次数 ({Config.MAX_TIMEOUT_RECONNECT_ATTEMPTS})，停止重连")
+            return
+        
+        # 执行异步重连
+        asyncio.create_task(self._handle_timeout_reconnect())
     
     async def scan_and_select_device(self) -> Optional[dict]:
         """扫描并选择蓝牙设备"""
@@ -208,7 +229,7 @@ class BluetoothHeartRateApp:
         device_address = device_info["address"]
         device_name = device_info["name"]
         
-        self.bluetooth_client = BluetoothHeartRateClient(self.heart_rate_callback, self.battery_callback)
+        self.bluetooth_client = BluetoothHeartRateClient(self.heart_rate_callback, self.battery_callback, self.timeout_callback)
         
         for attempt in range(Config.RECONNECT_ATTEMPTS + 1):
             try:
@@ -228,6 +249,15 @@ class BluetoothHeartRateApp:
                         self.osc_client.send_device_info(device_info)
                     
                     logger.info(f"成功连接到设备: {device_info.get('name')} ({device_address})")
+                    
+                    # 记录连接的设备信息，用于超时重连
+                    self.last_connected_device = {
+                        "address": device_address,
+                        "name": device_name
+                    }
+                    # 重置超时重连计数
+                    self.timeout_reconnect_count = 0
+                    
                     return True
                 
             except Exception as e:
@@ -320,6 +350,35 @@ class BluetoothHeartRateApp:
             logger.error(f"程序运行出错: {e}")
         finally:
             await self.cleanup()
+    
+    async def _handle_timeout_reconnect(self):
+        """处理超时重连"""
+        self.timeout_reconnect_count += 1
+        logger.info(f"开始第 {self.timeout_reconnect_count} 次超时重连...")
+        
+        try:
+            # 断开当前连接
+            if self.bluetooth_client:
+                await self.bluetooth_client.disconnect()
+            
+            # 等待一段时间后重连
+            await asyncio.sleep(2)
+            
+            # 尝试重连到上次连接的设备
+            if self.last_connected_device:
+                logger.info(f"尝试重连到设备: {self.last_connected_device['name']}")
+                success = await self.connect_bluetooth_device(self.last_connected_device)
+                
+                if success:
+                    logger.info("超时重连成功")
+                    self.timeout_reconnect_count = 0  # 重置重连计数
+                else:
+                    logger.error("超时重连失败")
+            else:
+                logger.error("没有上次连接的设备信息，无法重连")
+                
+        except Exception as e:
+            logger.error(f"超时重连过程中出错: {e}")
     
     async def cleanup(self):
         """清理资源"""

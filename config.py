@@ -24,6 +24,11 @@ class Config:
     RECONNECT_DELAY = float(os.getenv("RECONNECT_DELAY", "5.0"))
     KEEPALIVE_INTERVAL = float(os.getenv("KEEPALIVE_INTERVAL", "30.0"))
     
+    # 数据超时设置
+    DATA_TIMEOUT = float(os.getenv("DATA_TIMEOUT", "5.0"))  # 数据接收超时时间（秒）
+    ENABLE_AUTO_RECONNECT_ON_TIMEOUT = os.getenv("ENABLE_AUTO_RECONNECT_ON_TIMEOUT", "true").lower() == "true"
+    MAX_TIMEOUT_RECONNECT_ATTEMPTS = int(os.getenv("MAX_TIMEOUT_RECONNECT_ATTEMPTS", "5"))
+    
     # 日志设置
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_TO_FILE = os.getenv("LOG_TO_FILE", "false").lower() == "true"
@@ -85,6 +90,12 @@ class Config:
         if cls.SMOOTHING_WINDOW_SIZE <= 0:
             errors.append(f"平滑窗口大小无效: {cls.SMOOTHING_WINDOW_SIZE}")
         
+        if cls.DATA_TIMEOUT <= 0:
+            errors.append(f"数据超时时间无效: {cls.DATA_TIMEOUT}")
+        
+        if cls.MAX_TIMEOUT_RECONNECT_ATTEMPTS < 0:
+            errors.append(f"超时重连次数无效: {cls.MAX_TIMEOUT_RECONNECT_ATTEMPTS}")
+        
         if errors:
             raise ValueError("配置验证失败:\n" + "\n".join(errors))
     
@@ -103,6 +114,10 @@ class Config:
         print(f"重连次数: {cls.RECONNECT_ATTEMPTS}")
         print(f"重连延迟: {cls.RECONNECT_DELAY}秒")
         print(f"保活间隔: {cls.KEEPALIVE_INTERVAL}秒")
+        print(f"数据超时时间: {cls.DATA_TIMEOUT}秒")
+        print(f"启用超时自动重连: {cls.ENABLE_AUTO_RECONNECT_ON_TIMEOUT}")
+        if cls.ENABLE_AUTO_RECONNECT_ON_TIMEOUT:
+            print(f"超时重连最大次数: {cls.MAX_TIMEOUT_RECONNECT_ATTEMPTS}")
         print(f"日志级别: {cls.LOG_LEVEL}")
         print(f"日志文件: {cls.LOG_TO_FILE}")
         if cls.DEVICE_NAME_FILTER:

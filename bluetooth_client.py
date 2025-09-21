@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from bleak import BleakClient, BleakScanner
 from bleak.backends.characteristic import BleakGATTCharacteristic
 import struct
@@ -19,15 +20,22 @@ class BluetoothHeartRateClient:
     BATTERY_LEVEL_UUID = "00002a19-0000-1000-8000-00805f9b34fb"
     
     def __init__(self, heart_rate_callback: Optional[Callable[[int], None]] = None, 
-                 battery_callback: Optional[Callable[[int], None]] = None):
+                 battery_callback: Optional[Callable[[int], None]] = None,
+                 timeout_callback: Optional[Callable[[], None]] = None):
         self.client: Optional[BleakClient] = None
         self.device_address: Optional[str] = None
         self.device_name: Optional[str] = None
         self.heart_rate_callback = heart_rate_callback
         self.battery_callback = battery_callback
+        self.timeout_callback = timeout_callback
         self.is_connected = False
         self.last_heart_rate = 0
         self.last_battery_level = None
+        
+        # 数据超时检测相关
+        self.last_data_time = None
+        self.timeout_monitor_task = None
+        self.is_monitoring_timeout = False
         
     async def scan_devices(self, timeout: float = 10.0) -> list:
         """扫描附近的蓝牙心率设备"""
@@ -180,6 +188,10 @@ class BluetoothHeartRateClient:
             # 等待一下让连接稳定
             await asyncio.sleep(1)
             
+            # 启动超时监控
+            from config import Config
+            self.start_timeout_monitoring(Config.DATA_TIMEOUT)
+            
             # 检查是否有心率服务和电池服务
             try:
                 services = self.client.services
@@ -236,6 +248,9 @@ class BluetoothHeartRateClient:
     
     async def disconnect(self):
         """断开设备连接"""
+        # 停止超时监控
+        self.stop_timeout_monitoring()
+        
         if self.client and self.client.is_connected:
             try:
                 await self.client.disconnect()
@@ -271,6 +286,9 @@ class BluetoothHeartRateClient:
             if heart_rate > 0:
                 self.last_heart_rate = heart_rate
                 logger.debug(f"接收到心率数据: {heart_rate} bpm")
+                
+                # 更新数据接收时间戳
+                self.update_data_timestamp()
                 
                 # 调用回调函数
                 if self.heart_rate_callback:
@@ -401,21 +419,83 @@ class BluetoothHeartRateClient:
     
     async def keep_alive(self):
         """保持连接活跃"""
-        while self.is_connected and self.client and self.client.is_connected:
+        while True:  # 改为无限循环，不依赖is_connected状态
             try:
-                # 每30秒检查一次连接状态
-                await asyncio.sleep(30)
-                
-                # 尝试读取设备名称来测试连接
-                if self.client.is_connected:
+                # 如果当前已连接，进行连接检查
+                if self.is_connected and self.client:
+                    # 每30秒检查一次连接状态
+                    await asyncio.sleep(30)
+                    
+                    # 检查客户端是否存在且连接正常
+                    if not self.client:
+                        logger.warning("蓝牙客户端不存在")
+                        self.is_connected = False
+                        continue  # 继续循环等待重连
+                    
+                    if not self.client.is_connected:
+                        logger.warning("设备连接已断开")
+                        self.is_connected = False
+                        continue  # 继续循环等待重连
+                    
+                    # 尝试读取设备名称来测试连接
                     await self.client.read_gatt_char("00002a00-0000-1000-8000-00805f9b34fb")
                     logger.debug("连接状态检查正常")
                 else:
-                    logger.warning("设备连接已断开")
-                    self.is_connected = False
-                    break
+                    # 如果未连接，等待一段时间后再检查
+                    await asyncio.sleep(5)
                     
             except Exception as e:
                 logger.error(f"连接检查失败: {e}")
                 self.is_connected = False
-                break
+                # 不要break，继续循环等待重连
+                await asyncio.sleep(5)  # 等待一段时间后继续
+    
+    def start_timeout_monitoring(self, timeout_seconds: float):
+        """启动数据超时监控"""
+        if self.is_monitoring_timeout:
+            return
+            
+        self.is_monitoring_timeout = True
+        self.last_data_time = time.time()
+        self.timeout_monitor_task = asyncio.create_task(self._monitor_data_timeout(timeout_seconds))
+        logger.info(f"已启动数据超时监控，超时时间: {timeout_seconds}秒")
+    
+    def stop_timeout_monitoring(self):
+        """停止数据超时监控"""
+        self.is_monitoring_timeout = False
+        if self.timeout_monitor_task and not self.timeout_monitor_task.done():
+            self.timeout_monitor_task.cancel()
+            logger.info("已停止数据超时监控")
+    
+    def update_data_timestamp(self):
+        """更新数据接收时间戳"""
+        self.last_data_time = time.time()
+    
+    async def _monitor_data_timeout(self, timeout_seconds: float):
+        """监控数据接收超时"""
+        try:
+            while self.is_monitoring_timeout and self.is_connected:
+                await asyncio.sleep(5)  # 每5秒检查一次
+                
+                if self.last_data_time is None:
+                    continue
+                
+                current_time = time.time()
+                time_since_last_data = current_time - self.last_data_time
+                
+                if time_since_last_data > timeout_seconds:
+                    logger.warning(f"数据接收超时: {time_since_last_data:.1f}秒未收到心率数据")
+                    
+                    # 调用超时回调
+                    if self.timeout_callback:
+                        try:
+                            self.timeout_callback()
+                        except Exception as e:
+                            logger.error(f"超时回调执行失败: {e}")
+                    
+                    break
+                    
+        except asyncio.CancelledError:
+            logger.debug("数据超时监控任务已取消")
+        except Exception as e:
+            logger.error(f"数据超时监控失败: {e}")
