@@ -20,19 +20,16 @@ jobs:
         python-version: '3.12'
         
     - name: Install dependencies
-      working-directory: bluetooth-heartrate
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
         
     - name: Build executable
-      working-directory: bluetooth-heartrate
       run: |
         pyinstaller --onefile --console --name BluetoothHeartRate main.py
         
     - name: Prepare release files
-      working-directory: bluetooth-heartrate
       run: |
         mkdir release
         copy dist\BluetoothHeartRate.exe release\
@@ -40,7 +37,6 @@ jobs:
         copy config.py release\
         
     - name: Create release archive
-      working-directory: bluetooth-heartrate
       run: |
         powershell Compress-Archive -Path release\* -DestinationPath BluetoothHeartRate-Windows.zip
         
@@ -48,13 +44,13 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: BluetoothHeartRate-Windows
-        path: bluetooth-heartrate/BluetoothHeartRate-Windows.zip
+        path: BluetoothHeartRate-Windows.zip
         
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: bluetooth-heartrate/BluetoothHeartRate-Windows.zip
+        files: BluetoothHeartRate-Windows.zip
         body: |
           ## 蓝牙心率监测程序 - Windows版本
           
