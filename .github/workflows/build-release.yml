@@ -51,30 +51,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: BluetoothHeartRate-Windows.zip
-        body: |
-          ## 蓝牙心率监测程序 - Windows版本
-          
-          ### 功能特性
-          - 🔗 直接连接蓝牙心率设备
-          - 📡 实时转发心率数据到VRChat OSC
-          - 🔋 支持电池电量监测
-          - 🔄 自动重连机制
-          - ⚙️ 可配置参数设置
-          
-          ### 使用方法
-          1. 下载并解压 `BluetoothHeartRate-Windows.zip`
-          2. 运行 `BluetoothHeartRate.exe`
-          3. 按照程序提示连接蓝牙心率设备
-          
-          ### 系统要求
-          - Windows 10/11
-          - 支持蓝牙4.0+的设备
-          - VRChat (启用OSC)
-          
-          ### 更新内容
-          - 电量数据现在以int格式(0-100)发送
-          - 优化连接稳定性
-          - 改进错误处理机制
+        body: ""
         draft: false
         prerelease: false
       env:
