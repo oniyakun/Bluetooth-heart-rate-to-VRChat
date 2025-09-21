@@ -115,7 +115,7 @@ python main.py
 
 ### 连接状态参数
 - `/avatar/parameters/BluetoothHRConnected` (bool) - 蓝牙连接状态
-- `/avatar/parameters/BluetoothBattery` (float) - 设备电池电量 (0.0-1.0)
+- `/avatar/parameters/BluetoothBattery` (int) - 设备电池电量 (0-100)
 
 ## 示例Avatar
 

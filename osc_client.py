@@ -123,8 +123,8 @@ class VRChatOSCClient:
                 heartrates.append({
                     'address': "/avatar/parameters/BluetoothBattery",
                     'args': {
-                        'type': "f",
-                        'value': battery_level / 100.0
+                        'type': "i",
+                        'value': int(battery_level)
                     }
                 })
             
@@ -213,9 +213,9 @@ class VRChatOSCClient:
         try:
             # 发送电池电量 (如果有)
             if "battery_level" in device_info and device_info["battery_level"] is not None:
-                battery_percent = device_info["battery_level"] / 100.0
-                self.client.send_message("/avatar/parameters/BluetoothBattery", battery_percent)
-                logger.info(f"已发送电池电量到VRChat: {device_info['battery_level']}% -> {battery_percent}")
+                battery_level = int(device_info["battery_level"])
+                self.client.send_message("/avatar/parameters/BluetoothBattery", battery_level)
+                logger.info(f"已发送电池电量到VRChat: {battery_level}%")
             else:
                 logger.warning(f"设备信息中没有电池电量数据: {device_info}")
             
