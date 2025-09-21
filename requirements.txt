@@ -8,6 +8,7 @@ python-osc>=1.8.3
 
 # Logging and configuration
 colorlog>=6.7.0
+python-dotenv>=1.0.0
 
 # Data processing (optional)
 numpy>=1.24.0

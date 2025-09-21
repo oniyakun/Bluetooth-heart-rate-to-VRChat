@@ -34,7 +34,7 @@ jobs:
         mkdir release
         copy dist\BluetoothHeartRate.exe release\
         copy README.md release\
-        copy config.py release\
+        copy .env.example release\
         
     - name: Create release archive
       run: |

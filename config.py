@@ -1,6 +1,14 @@
 import os
 import logging
 
+# 尝试加载 .env 文件
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # 加载当前目录下的 .env 文件
+except ImportError:
+    # 如果没有安装 python-dotenv，继续使用环境变量
+    pass
+
 class Config:
     """配置类 - 蓝牙心率到VRChat OSC"""
     
@@ -25,7 +33,7 @@ class Config:
     KEEPALIVE_INTERVAL = float(os.getenv("KEEPALIVE_INTERVAL", "30.0"))
     
     # 数据超时设置
-    DATA_TIMEOUT = float(os.getenv("DATA_TIMEOUT", "5.0"))  # 数据接收超时时间（秒）
+    DATA_TIMEOUT = float(os.getenv("DATA_TIMEOUT", "10.0"))  # 数据接收超时时间（秒）
     ENABLE_AUTO_RECONNECT_ON_TIMEOUT = os.getenv("ENABLE_AUTO_RECONNECT_ON_TIMEOUT", "true").lower() == "true"
     MAX_TIMEOUT_RECONNECT_ATTEMPTS = int(os.getenv("MAX_TIMEOUT_RECONNECT_ATTEMPTS", "5"))
     

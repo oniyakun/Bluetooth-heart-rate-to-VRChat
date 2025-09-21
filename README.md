@@ -46,27 +46,35 @@ pip install -r requirements.txt
 
 ### 2. 配置设置（可选）
 
-创建 `.env` 文件或设置环境变量来自定义配置：
+你可以通过创建 `.env` 文件来自定义程序配置：
 
-```bash
-# OSC设置
-OSC_IP=127.0.0.1
-OSC_PORT=9000
+1. **复制示例配置文件**：
+   ```bash
+   copy .env.example .env
+   ```
 
-# 蓝牙设置
-BLUETOOTH_SCAN_TIMEOUT=10.0
-AUTO_CONNECT_LAST_DEVICE=true
+2. **编辑 `.env` 文件**，修改你需要的配置项：
+   ```bash
+   # OSC设置
+   OSC_IP=127.0.0.1
+   OSC_PORT=9000
 
-# 心率设置
-HEART_RATE_MIN=40
-HEART_RATE_MAX=200
-HEART_RATE_SMOOTHING=true
-SMOOTHING_WINDOW_SIZE=5
+   # 蓝牙设置
+   BLUETOOTH_SCAN_TIMEOUT=10.0
+   AUTO_CONNECT_LAST_DEVICE=true
 
-# 日志设置
-LOG_LEVEL=INFO
-LOG_TO_FILE=false
-```
+   # 心率设置
+   HEART_RATE_MIN=40
+   HEART_RATE_MAX=200
+   HEART_RATE_SMOOTHING=true
+   SMOOTHING_WINDOW_SIZE=5
+
+   # 日志设置
+   LOG_LEVEL=INFO
+   LOG_TO_FILE=false
+   ```
+
+> 💡 **提示**: 如果不创建 `.env` 文件，程序将使用默认配置。所有配置项都有合理的默认值。
 
 ## 使用方法
 
