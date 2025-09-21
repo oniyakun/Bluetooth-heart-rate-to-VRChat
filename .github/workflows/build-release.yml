@@ -1,0 +1,85 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送标签时触发（如 v1.0.0）
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: Install dependencies
+      working-directory: ./bluetooth-heartrate
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build executable
+      working-directory: ./bluetooth-heartrate
+      run: |
+        pyinstaller --onefile --console --name BluetoothHeartRate main.py
+        
+    - name: Prepare release files
+      working-directory: ./bluetooth-heartrate
+      run: |
+        mkdir release
+        copy dist\BluetoothHeartRate.exe release\
+        copy README.md release\
+        copy config.py release\
+        
+    - name: Create release archive
+      working-directory: ./bluetooth-heartrate
+      run: |
+        powershell Compress-Archive -Path release\* -DestinationPath BluetoothHeartRate-Windows.zip
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: BluetoothHeartRate-Windows
+        path: bluetooth-heartrate/BluetoothHeartRate-Windows.zip
+        
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: bluetooth-heartrate/BluetoothHeartRate-Windows.zip
+        body: |
+          ## 蓝牙心率监测程序 - Windows版本
+          
+          ### 功能特性
+          - 🔗 直接连接蓝牙心率设备
+          - 📡 实时转发心率数据到VRChat OSC
+          - 🔋 支持电池电量监测
+          - 🔄 自动重连机制
+          - ⚙️ 可配置参数设置
+          
+          ### 使用方法
+          1. 下载并解压 `BluetoothHeartRate-Windows.zip`
+          2. 运行 `BluetoothHeartRate.exe`
+          3. 按照程序提示连接蓝牙心率设备
+          
+          ### 系统要求
+          - Windows 10/11
+          - 支持蓝牙4.0+的设备
+          - VRChat (启用OSC)
+          
+          ### 更新内容
+          - 电量数据现在以int格式(0-100)发送
+          - 优化连接稳定性
+          - 改进错误处理机制
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,60 @@
+name: Build Development Version
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: Install dependencies
+      working-directory: ./bluetooth-heartrate
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Run syntax check
+      working-directory: ./bluetooth-heartrate
+      run: |
+        python -m py_compile main.py
+        python -m py_compile bluetooth_client.py
+        python -m py_compile osc_client.py
+        python -m py_compile config.py
+        
+    - name: Build executable
+      working-directory: ./bluetooth-heartrate
+      run: |
+        pyinstaller --onefile --console --name BluetoothHeartRate-dev main.py
+        
+    - name: Test executable creation
+      working-directory: ./bluetooth-heartrate
+      run: |
+        if (Test-Path "dist\BluetoothHeartRate-dev.exe") {
+          Write-Host "✅ Executable created successfully"
+          $size = (Get-Item "dist\BluetoothHeartRate-dev.exe").Length / 1MB
+          Write-Host "📦 File size: $([math]::Round($size, 2)) MB"
+        } else {
+          Write-Host "❌ Executable creation failed"
+          exit 1
+        }
+        
+    - name: Upload development build
+      uses: actions/upload-artifact@v3
+      with:
+        name: BluetoothHeartRate-dev-${{ github.sha }}
+        path: bluetooth-heartrate/dist/BluetoothHeartRate-dev.exe
+        retention-days: 7  # 开发版本保留7天
