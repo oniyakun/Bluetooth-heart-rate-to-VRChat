@@ -22,6 +22,11 @@ class VRChatOSCClient:
         # 心率平滑处理
         self.heart_rate_history = deque(maxlen=Config.SMOOTHING_WINDOW_SIZE)
         
+        # Chatbox发送控制
+        self.last_chatbox_time = 0
+        self.last_chatbox_message = ""
+        self.chatbox_min_interval = Config.CHATBOX_SEND_INTERVAL  # 最小发送间隔（秒）
+        
     def connect(self):
         """连接到VRChat OSC"""
         try:
@@ -236,4 +241,40 @@ class VRChatOSCClient:
             return True
         except Exception as e:
             logger.error(f"发送自定义参数失败: {e}")
+            return False
+    
+    def send_chatbox_message(self, message: str):
+        """发送消息到VRChat chatbox
+        
+        Args:
+            message: 要显示的消息内容
+        """
+        if not self.connected or not self.client:
+            logger.warning("OSC未连接，无法发送chatbox消息")
+            return False
+        
+        current_time = time.time()
+        
+        # 检查发送频率限制
+        if current_time - self.last_chatbox_time < self.chatbox_min_interval:
+            logger.debug(f"Chatbox发送过于频繁，跳过消息: {message}")
+            return False
+        
+        # 检查是否为重复消息
+        if message == self.last_chatbox_message:
+            logger.debug(f"重复的chatbox消息，跳过: {message}")
+            return False
+        
+        try:
+            # 发送到聊天框，不播放声音
+            self.client.send_message("/chatbox/input", [message, True, False])
+            
+            # 更新发送记录
+            self.last_chatbox_time = current_time
+            self.last_chatbox_message = message
+            
+            logger.debug(f"已发送聊天消息: {message}")
+            return True
+        except Exception as e:
+            logger.error(f"发送chatbox消息失败: {e}")
             return False

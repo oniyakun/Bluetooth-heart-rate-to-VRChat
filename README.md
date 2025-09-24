@@ -197,6 +197,19 @@ python main.py
 | `DEVICE_NAME_FILTER` | "" | 设备名称过滤器 |
 | `RSSI_THRESHOLD` | -80 | RSSI信号强度阈值 |
 
+### Chatbox设置
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `ENABLE_CHATBOX` | false | 启用chatbox消息发送 |
+| `CHATBOX_MESSAGE_FORMAT` | "心率：{heart_rate}" | chatbox消息格式，{heart_rate}会被替换为实际心率值 |
+| `CHATBOX_SEND_INTERVAL` | 2.0 | chatbox消息发送间隔（秒），避免发送过于频繁 |
+
+> 💡 **Chatbox功能说明**: 启用后，程序会将心率信息直接发送到VRChat的聊天框。为了避免VRChat的频率限制，程序会自动控制发送间隔并过滤重复消息。你可以自定义消息格式，例如：
+> - `心率：{heart_rate}` → "心率：75"
+> - `HR: {heart_rate} bpm` → "HR: 75 bpm"
+> - `💓 {heart_rate}` → "💓 75"
+
 ## 支持的设备
 
 理论上支持所有符合蓝牙心率服务规范的设备，包括但不限于：

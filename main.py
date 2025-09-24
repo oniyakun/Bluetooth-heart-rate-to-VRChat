@@ -100,6 +100,15 @@ class BluetoothHeartRateApp:
             if self.bluetooth_client and hasattr(self.bluetooth_client, 'last_battery_level') and self.bluetooth_client.last_battery_level is not None:
                 battery_level = self.bluetooth_client.last_battery_level
             self.osc_client.send_heart_rate(heart_rate, battery_level)
+            
+            # 发送chatbox消息（如果启用）
+            if Config.ENABLE_CHATBOX:
+                try:
+                    # 格式化chatbox消息
+                    chatbox_message = Config.CHATBOX_MESSAGE_FORMAT.format(heart_rate=heart_rate)
+                    self.osc_client.send_chatbox_message(chatbox_message)
+                except Exception as e:
+                    logger.warning(f"发送chatbox消息失败: {e}")
         else:
             logger.warning(f"OSC未连接，丢失心率数据: {heart_rate} bpm")
     

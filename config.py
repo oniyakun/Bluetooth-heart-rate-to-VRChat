@@ -46,6 +46,11 @@ class Config:
     DEVICE_NAME_FILTER = os.getenv("DEVICE_NAME_FILTER", "")  # 可以设置设备名称过滤
     RSSI_THRESHOLD = int(os.getenv("RSSI_THRESHOLD", "-80"))  # RSSI阈值
     
+    # Chatbox设置
+    ENABLE_CHATBOX = os.getenv("ENABLE_CHATBOX", "false").lower() == "true"  # 是否启用chatbox功能
+    CHATBOX_MESSAGE_FORMAT = os.getenv("CHATBOX_MESSAGE_FORMAT", "心率：{heart_rate}")  # chatbox消息格式
+    CHATBOX_SEND_INTERVAL = float(os.getenv("CHATBOX_SEND_INTERVAL", "2.0"))  # chatbox发送间隔（秒）
+    
     @classmethod
     def setup_logging(cls):
         """设置日志配置"""
