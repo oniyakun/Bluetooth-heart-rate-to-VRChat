@@ -106,6 +106,11 @@ class BluetoothHeartRateApp:
                 try:
                     # 格式化chatbox消息
                     chatbox_message = Config.CHATBOX_MESSAGE_FORMAT.format(heart_rate=heart_rate)
+
+                    # 追加进度条（可用开关控制），格式：[文字][条]百分比
+                    if Config.PROGRESSBAR_ENABLED:
+                        progress_line = Config.build_progress_line(heart_rate)
+                        chatbox_message = f"{chatbox_message}\n{progress_line}"
                     self.osc_client.send_chatbox_message(chatbox_message)
                 except Exception as e:
                     logger.warning(f"发送chatbox消息失败: {e}")

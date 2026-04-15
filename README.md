@@ -205,6 +205,35 @@ python main.py
 | `CHATBOX_MESSAGE_FORMAT` | "心率：{heart_rate}" | chatbox消息格式，{heart_rate}会被替换为实际心率值 |
 | `CHATBOX_SEND_INTERVAL` | 2.0 | chatbox消息发送间隔（秒），避免发送过于频繁 |
 
+### Chatbox进度条
+
+当启用 `ENABLE_CHATBOX=true` 时，程序会在chatbox消息末尾自动追加：**换行 + 单字符构成的进度条**。
+
+进度条会按配置的范围将心率归一化：
+
+- 低于 `PROGRESSBAR_MIN` → 全空
+- 高于 `PROGRESSBAR_MAX` → 全满
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `PROGRESSBAR_MIN` | 60 | 进度条最低心率值（bpm） |
+| `PROGRESSBAR_MAX` | 130 | 进度条最高心率值（bpm） |
+| `PROGRESSBAR_LENGTH` | 5 | 进度条长度（字符数） |
+| `PROGRESSBAR_CHAR` | "█" | 进度条填充字符（只取第一个字符） |
+| `PROGRESSBAR_EMPTY_CHAR` | "░" | 进度条空白字符（只取第一个字符；用于避免 Chatbox 吞空格导致显示比例失真） |
+
+额外可配置：
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `PROGRESSBAR_ENABLED` | true | 是否启用进度条追加 |
+| `PROGRESSBAR_LABEL` | "" | 进度条前缀文字 |
+
+```
+心率：100
+攻略进度:[█████░░░░░]50%
+```
+
 > 💡 **Chatbox功能说明**: 启用后，程序会将心率信息直接发送到VRChat的聊天框。为了避免VRChat的频率限制，程序会自动控制发送间隔并过滤重复消息。你可以自定义消息格式，例如：
 > - `心率：{heart_rate}` → "心率：75"
 > - `HR: {heart_rate} bpm` → "HR: 75 bpm"
